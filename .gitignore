@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js
+.next/
+**/.next/
+out/
+**/out/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Research source files awaiting redistribution-permission review
+/data/raw/*.pdf
+/data/extracted/bbmp_intersection_volume_table158.csv
+/data/extracted/bbmp_tumkur_intersection_volume_table10.csv
+/data/extracted/bbmp_tumkur_midblock_vc_los_table8.csv

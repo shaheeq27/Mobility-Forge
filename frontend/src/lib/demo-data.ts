@@ -1,0 +1,3 @@
+/** Presentation-only values. These are not traffic observations or research outputs. */
+export const overviewMetrics=[['Planned decision inputs','—','Awaiting verified data','var(--cyan)'],['Intersections in research set','—','Dataset not established','var(--lime)'],['Decision method','Pending','Instructor confirmation required','var(--cyan)'],['Research status','Foundation','Phase 1 interface only','var(--lime)']]as const;
+export const previewRows=[['Illustrative location A','Not established','No source connected'],['Illustrative location B','Not established','No source connected'],['Illustrative location C','Not established','No source connected']]as const;
