@@ -12,7 +12,7 @@ The seven citywide intersections have volume observations only for the purposes 
 
 The proposed minimal model therefore uses the six road sections and two quantitative criteria: peak PCU volume and V/C. LOS is retained for interpretation and validation, not automatically as a third weighted criterion. Because V/C is derived from flow and capacity, the two quantitative criteria are informative but not independent; any model must disclose and test the risk of double-counting congestion.
 
-**Provisional recommendation: CONDITIONAL GO.** A transparent weighted-sum baseline is the simplest candidate method. Fuzzy TOPSIS should be implemented only if the instructor requires or approves it and specifies the methodological reference and variant.
+**Provisional recommendation: CONDITIONAL GO.** The methodology decision now requires Fuzzy TOPSIS. Its reference, fuzzy-number representation, weights, normalization convention, and period/direction policy are specified separately in `research/phase7_fuzzy_topsis_specification.md`; no final ranking implementation is authorized until those choices are approved.
 
 ## Verified data and scope
 
@@ -31,7 +31,7 @@ Verified source context:
 
 - The report’s Table 8 defines the directional peak PCU volume, V/C, and LOS fields (PDF page 46; summarized in `research/phase2c_extraction_compatibility_audit.md`).
 - The report states that capacity includes adjustments for on-street parking, bus stops, and access points. V/C is therefore a source-derived measure with assumptions, not an independently measured raw field.
-- Morning and evening windows are reported by the source, but exact windows can vary by survey location. They must remain source-labelled.
+- Table 8 reports only source-labelled “Morning Peak” and “Evening Peak” periods; exact clock-time windows for its V/C/LOS values remain unresolved. Table 7 on PDF page 44 lists clock windows for traffic-volume counts, but its PCU values differ from Table 8 and the report does not explicitly establish that those windows apply to Table 8.
 - The PDF is preserved at `data/raw/bbmp-ctmp-tumkur-road-old-madras-road.pdf`; its verified SHA-256 is `c6a0b8b0695a087ba65f65b2f9ffe63c7180b2f4de3ab63f3bc74f6f65d0f8fa`.
 
 The seven Table 158 intersections (PDF page 546) have daily, morning, and evening vehicle/PCU volumes but no verified matching V/C, LOS, delay, speed, or cost. The five Table 10 corridor intersections (PDF page 48) are a different five-location set. Neither set is the proposed model scope.
@@ -40,9 +40,9 @@ The seven Table 158 intersections (PDF page 546) have daily, morning, and evenin
 
 | Criterion | Definition | Unit | Time period | Benefit/cost direction | Source | Missing-data handling | Justification |
 |---|---|---|---|---|---|---|---|
-| Peak PCU volume | Reported peak-hour traffic flow converted to passenger-car units | PCU per peak hour | Morning and evening; each source-labelled directional period | Higher congestion demand is treated as higher screening priority; this is a **benefit-to-priority**, not a beneficial outcome | BBMP Table 8, PDF p.46; extracted CSV | No imputation or interpolation. If a required section/direction/period is missing or invalid, stop that run and document the gap; do not silently substitute another period or direction | Directly available for every proposed alternative, period, and direction |
-| V/C ratio | Peak-hour flow divided by source-estimated capacity | Dimensionless ratio | Morning and evening; each direction | Higher capacity pressure is higher screening priority | BBMP Table 8, PDF p.46; capacity explanation p.46 | Preserve the source value and capacity assumptions. Do not recompute or repair missing V/C without the original inputs and approved method | Directly available for every proposed alternative, period, and direction; operationally meaningful for congestion screening |
-| LOS (provisional interpretation field) | Source categorical service-level classification associated with operating conditions | Letter category A–F | Morning and evening; each direction | Worse service category indicates greater concern, but no separate model weight by default | BBMP Table 8, PDF p.46 | Preserve missing/invalid labels as unresolved. Do not convert categories to invented numeric scores | Provides an interpretable validation/context label and helps communicate V/C results without automatically duplicating it as a criterion |
+| Peak PCU volume | Reported peak-hour traffic flow converted to passenger-car units | PCU per peak hour | Source-labelled morning and evening peak; exact Table 8 clock windows unresolved | Higher congestion demand is treated as higher screening priority; this is a **benefit-to-priority**, not a beneficial outcome | BBMP Table 8, PDF p.46; extracted CSV; related Table 7 windows on PDF p.44 | No imputation or interpolation. If a required section/direction/period is missing or invalid, stop that run and document the gap; do not silently substitute another period or direction | Directly available for every proposed alternative, period, and direction, but exact clock-time metadata are not verified for Table 8 |
+| V/C ratio | Peak-hour flow divided by source-estimated capacity | Dimensionless ratio | Source-labelled morning and evening peak; exact Table 8 clock windows unresolved | Higher capacity pressure is higher screening priority | BBMP Table 8, PDF p.46; capacity explanation p.46 | Preserve the source value and capacity assumptions. Do not recompute or repair missing V/C without the original inputs and approved method | Directly available for every proposed alternative, period, and direction; operationally meaningful for congestion screening |
+| LOS (provisional interpretation field) | Source categorical service-level classification associated with operating conditions | Letter category A–F | Source-labelled morning and evening peak; exact Table 8 clock windows unresolved | Worse service category indicates greater concern, but no separate model weight by default | BBMP Table 8, PDF p.46 | Preserve missing/invalid labels as unresolved. Do not convert categories to invented numeric scores | Provides an interpretable validation/context label and helps communicate V/C results without automatically duplicating it as a criterion |
 
 Excluded from the initial specification:
 
@@ -72,8 +72,8 @@ No such comparison or score is calculated in Phase 4.
 
 | Method | Strengths for this evidence | Limitations / risks | Status |
 |---|---|---|---|
-| Transparent weighted sum | Easy to explain and audit; works with two quantitative criteria; makes direction and weights explicit; straightforward to reproduce in a worked example | Requires normalisation and weights; sensitive to scale and double-counting; does not itself express uncertainty | Preferred provisional baseline |
-| Fuzzy TOPSIS | Matches the proposed fuzzy-MCDM academic direction; represents uncertain linguistic inputs if those inputs are genuinely justified; provides ideal-solution distances | More assumptions and implementation choices; triangular fuzzy numbers and weights would be invented if not supported by evidence; multiple incompatible variants exist; harder to validate with only two related quantitative fields | Candidate only if instructor approves a specific reference/variant |
+| Transparent weighted sum | Easy to explain and audit; works with two quantitative criteria; makes direction and weights explicit; straightforward to reproduce in a worked example | Requires normalisation and weights; sensitive to scale and double-counting; does not itself express uncertainty | Not the mandated final method; retained only as a conceptual comparison |
+| Fuzzy TOPSIS | Matches the mandated fuzzy-MCDM direction; represents approved linguistic inputs with triangular fuzzy numbers; provides ideal-solution distances and closeness coefficients | Requires an approved reference/variant, TFN scale, weights, normalization, and period/direction protocol | Mandated method; specification in `research/phase7_fuzzy_topsis_specification.md` |
 | LOS-only ordinal ranking | Very simple communication and source-aligned categories | Discards quantitative variation; LOS is related to V/C; categorical conversion rules could create arbitrary ties | Interpretation/validation, not preferred core method |
 
 The evidence does not require a complex method. A weighted sum is the simplest transparent baseline. If the assignment explicitly requires fuzzy decision-making, Fuzzy TOPSIS may be a second implementation or comparison, but only after instructor approval and selection of one consistent methodological reference.
@@ -146,4 +146,3 @@ These are planned checks, not completed calculations.
 - Did not calculate weights, scores, fuzzy numbers, or rankings.
 - Created only this new research document; no existing research file, CSV, PDF, frontend, or backend file was modified.
 - Nothing was staged, committed, or pushed.
-

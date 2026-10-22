@@ -6,6 +6,15 @@ import unittest
 
 from mobility_engine.loader import load_observations
 from mobility_engine.models import Direction, Period
+from mobility_engine.fuzzy_topsis import (
+    TriangularFuzzyNumber,
+    closeness_coefficients,
+    fuzzy_ideal_solutions,
+    normalize_fuzzy_criterion,
+    rank_by_closeness,
+    vertex_distance,
+    weighted_normalized_matrix,
+)
 from mobility_engine.scoring import min_max_normalize, weighted_sum
 from mobility_engine.validation import validate_observations
 
@@ -100,6 +109,185 @@ class EngineTests(unittest.TestCase):
                 load_observations(path)
         finally:
             Path(path).unlink()
+
+    def test_tfn_validation_and_scalar_arithmetic(self):
+        value = TriangularFuzzyNumber(Decimal("1"), Decimal("2"), Decimal("4"))
+        self.assertEqual(value * Decimal("0.5"), TriangularFuzzyNumber(Decimal("0.5"), Decimal("1"), Decimal("2")))
+        with self.assertRaisesRegex(ValueError, "lower <= modal"):
+            TriangularFuzzyNumber(Decimal("2"), Decimal("1"), Decimal("3"))
+        with self.assertRaisesRegex(ValueError, "non-negative"):
+            TriangularFuzzyNumber(Decimal("-1"), Decimal("0"), Decimal("1"))
+        with self.assertRaisesRegex(ValueError, "finite"):
+            TriangularFuzzyNumber(Decimal("NaN"), Decimal("1"), Decimal("2"))
+
+    def test_vertex_distance_matches_hand_calculation(self):
+        left = TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0"))
+        right = TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1"))
+        self.assertEqual(vertex_distance(left, right), Decimal("1"))
+
+    def test_benefit_and_cost_normalization(self):
+        values = [
+            TriangularFuzzyNumber(Decimal("1"), Decimal("2"), Decimal("4")),
+            TriangularFuzzyNumber(Decimal("2"), Decimal("4"), Decimal("8")),
+        ]
+        self.assertEqual(
+            normalize_fuzzy_criterion(values, "higher"),
+            [
+                TriangularFuzzyNumber(Decimal("0.125"), Decimal("0.25"), Decimal("0.5")),
+                TriangularFuzzyNumber(Decimal("0.25"), Decimal("0.5"), Decimal("1")),
+            ],
+        )
+        costs = [
+            TriangularFuzzyNumber(Decimal("2"), Decimal("4"), Decimal("6")),
+            TriangularFuzzyNumber(Decimal("4"), Decimal("6"), Decimal("8")),
+        ]
+        self.assertEqual(
+            normalize_fuzzy_criterion(costs, "lower"),
+            [
+                TriangularFuzzyNumber(Decimal(1) / Decimal(3), Decimal("0.5"), Decimal("1")),
+                TriangularFuzzyNumber(Decimal("0.25"), Decimal(Decimal(1) / Decimal(3)), Decimal("0.5")),
+            ],
+        )
+
+    def test_normalization_rejects_empty_and_zero_denominator(self):
+        with self.assertRaisesRegex(ValueError, "cannot be empty"):
+            normalize_fuzzy_criterion([], "higher")
+        zero = [TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0"))]
+        with self.assertRaisesRegex(ValueError, "positive upper maximum"):
+            normalize_fuzzy_criterion(zero, "higher")
+        with self.assertRaisesRegex(ValueError, "positive lower minimum"):
+            normalize_fuzzy_criterion(zero, "lower")
+
+    def test_weighted_matrix_and_ideal_solutions(self):
+        matrix = {
+            "volume": [
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0.5"), Decimal("1")),
+                TriangularFuzzyNumber(Decimal("0.25"), Decimal("0.5"), Decimal("0.75")),
+            ],
+            "vc": [
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0.25"), Decimal("0.5")),
+                TriangularFuzzyNumber(Decimal("0.5"), Decimal("0.75"), Decimal("1")),
+            ],
+        }
+        weighted = weighted_normalized_matrix(matrix, {"volume": Decimal("0.5"), "vc": Decimal("0.5")})
+        self.assertEqual(weighted["volume"][0].modal, Decimal("0.25"))
+        positive, negative = fuzzy_ideal_solutions(weighted)
+        self.assertEqual(positive["volume"], TriangularFuzzyNumber(Decimal("0.125"), Decimal("0.25"), Decimal("0.5")))
+        self.assertEqual(negative["vc"], TriangularFuzzyNumber(Decimal("0"), Decimal("0.125"), Decimal("0.25")))
+
+    def test_weighted_matrix_rejects_mismatches_and_invalid_weights(self):
+        value = TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("1"))
+        with self.assertRaisesRegex(ValueError, "same number"):
+            weighted_normalized_matrix({"volume": [value], "vc": [value, value]}, {"volume": Decimal("0.5"), "vc": Decimal("0.5")})
+        with self.assertRaisesRegex(ValueError, "sum exactly"):
+            weighted_normalized_matrix({"volume": [value], "vc": [value]}, {"volume": Decimal("0.4"), "vc": Decimal("0.4")})
+        with self.assertRaisesRegex(ValueError, "cannot be negative"):
+            weighted_normalized_matrix({"volume": [value], "vc": [value]}, {"volume": Decimal("-0.1"), "vc": Decimal("1.1")})
+        out_of_range = TriangularFuzzyNumber(Decimal("0"), Decimal("1"), Decimal("2"))
+        with self.assertRaisesRegex(ValueError, r"within \[0, 1\]"):
+            weighted_normalized_matrix({"volume": [out_of_range], "vc": [value]}, {"volume": Decimal("0.5"), "vc": Decimal("0.5")})
+
+    def test_zero_weight_criterion_contributes_zero(self):
+        values = [
+            TriangularFuzzyNumber(Decimal("0.2"), Decimal("0.4"), Decimal("0.8")),
+            TriangularFuzzyNumber(Decimal("0.5"), Decimal("0.6"), Decimal("1")),
+        ]
+        weighted = weighted_normalized_matrix(
+            {"pcu": values, "vc": values},
+            {"pcu": Decimal("1"), "vc": Decimal("0")},
+        )
+        self.assertEqual(
+            weighted["vc"],
+            [
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+            ],
+        )
+
+    def test_singleton_tfn_pipeline(self):
+        normalized = normalize_fuzzy_criterion(
+            [
+                TriangularFuzzyNumber(Decimal("2"), Decimal("2"), Decimal("2")),
+                TriangularFuzzyNumber(Decimal("4"), Decimal("4"), Decimal("4")),
+            ],
+            "higher",
+        )
+        self.assertEqual(
+            normalized,
+            [
+                TriangularFuzzyNumber(Decimal("0.5"), Decimal("0.5"), Decimal("0.5")),
+                TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1")),
+            ],
+        )
+        weighted = weighted_normalized_matrix({"pcu": normalized}, {"pcu": Decimal("1")})
+        self.assertEqual(vertex_distance(weighted["pcu"][0], weighted["pcu"][1]), Decimal("0.5"))
+        self.assertEqual(closeness_coefficients(weighted), [Decimal("0"), Decimal("1")])
+
+    def test_single_criterion_weight_scenarios_are_evaluable_with_synthetic_data(self):
+        synthetic = {
+            "pcu": [
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+                TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1")),
+            ],
+            "vc": [
+                TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1")),
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+            ],
+        }
+        pcu_only = weighted_normalized_matrix(
+            synthetic,
+            {"pcu": Decimal("1"), "vc": Decimal("0")},
+        )
+        vc_only = weighted_normalized_matrix(
+            synthetic,
+            {"pcu": Decimal("0"), "vc": Decimal("1")},
+        )
+        self.assertEqual(closeness_coefficients(pcu_only), [Decimal("0"), Decimal("1")])
+        self.assertEqual(closeness_coefficients(vc_only), [Decimal("1"), Decimal("0")])
+
+    def test_closeness_coefficients_and_tie_order(self):
+        weighted = {
+            "volume": [
+                TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1")),
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+            ],
+            "vc": [
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+                TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1")),
+            ],
+        }
+        coefficients = closeness_coefficients(weighted)
+        self.assertEqual(coefficients, [Decimal("0.5"), Decimal("0.5")])
+        self.assertEqual(rank_by_closeness(coefficients), [0, 1])
+        with self.assertRaisesRegex(ValueError, "undefined"):
+            closeness_coefficients({"volume": [TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0"))]})
+
+    def test_end_to_end_weighted_matrix_ideals_distances_and_closeness(self):
+        """Synthetic three-alternative example; no research data are used."""
+        normalized = {
+            "volume": [
+                TriangularFuzzyNumber(Decimal("0.2"), Decimal("0.2"), Decimal("0.2")),
+                TriangularFuzzyNumber(Decimal("0.8"), Decimal("0.8"), Decimal("0.8")),
+                TriangularFuzzyNumber(Decimal("1"), Decimal("1"), Decimal("1")),
+            ],
+            "vc": [
+                TriangularFuzzyNumber(Decimal("0.8"), Decimal("0.8"), Decimal("0.8")),
+                TriangularFuzzyNumber(Decimal("0.4"), Decimal("0.4"), Decimal("0.4")),
+                TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")),
+            ],
+        }
+        weighted = weighted_normalized_matrix(
+            normalized,
+            {"volume": Decimal("0.6"), "vc": Decimal("0.4")},
+        )
+        positive, negative = fuzzy_ideal_solutions(weighted)
+        self.assertEqual(positive["volume"], TriangularFuzzyNumber(Decimal("0.6"), Decimal("0.6"), Decimal("0.6")))
+        self.assertEqual(positive["vc"], TriangularFuzzyNumber(Decimal("0.32"), Decimal("0.32"), Decimal("0.32")))
+        self.assertEqual(negative["volume"], TriangularFuzzyNumber(Decimal("0.12"), Decimal("0.12"), Decimal("0.12")))
+        self.assertEqual(negative["vc"], TriangularFuzzyNumber(Decimal("0"), Decimal("0"), Decimal("0")))
+        coefficients = closeness_coefficients(weighted)
+        self.assertEqual(coefficients, [Decimal("0.4"), Decimal("0.65"), Decimal("0.6")])
+        self.assertEqual(rank_by_closeness(coefficients), [1, 2, 0])
 
 
 if __name__ == "__main__":

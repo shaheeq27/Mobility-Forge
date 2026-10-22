@@ -89,7 +89,7 @@ This is a distinct five-location corridor set. It must not be merged with the se
 1. The seven intersections have no verified same-location delay, speed, V/C, LOS, or cost values.
 2. The five corridor intersections, seven citywide intersections, and six road sections are different alternative sets.
 3. Speed/delay tables are link-wise, directional, vehicle-specific, and period-specific. A nearby named junction is not proof that a link is the same as a Table 8 section.
-4. Morning and evening windows vary by location. They must remain source-labelled; they must not be silently treated as simultaneous or identical periods.
+4. Table 8 provides only morning/evening peak labels, not clock-time windows. Table 7 lists windows for related traffic-volume counts, but its differing PCU values do not establish that those times apply to Table 8 V/C/LOS; all periods must remain source-labelled and must not be silently treated as simultaneous or identical.
 5. The survey collection date and exact comparability of all bundled report sections remain unresolved.
 6. Direction handling is unresolved: the Table 8 rows contain two directional observations per period, but no approved aggregation rule exists.
 7. V/C depends on source capacity assumptions and is not independent of traffic volume.
