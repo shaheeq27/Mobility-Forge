@@ -290,6 +290,23 @@ The implementation deliberately does not infer fuzzy weights from crisp equal we
 
 Tests use labelled synthetic TFNs only and cover invalid components, arithmetic, benefit/cost normalization, zero denominators, matrix dimensions, weights, ideal points, distance, closeness, ties, and boundary validation. The four source-labelled period/direction runs and the Table 8 peak-window evidence gap are unchanged.
 
+## 11. Phase 9 execution boundary
+
+The provisional execution service accepts exactly one source-labelled period
+and direction, the six expected alternatives, and explicit crisp `pcu` and
+`vc` weights that sum to one. It converts the two measured criteria to
+singleton TFNs, applies the tested benefit normalization, weighted-matrix
+componentwise ideals, vertex distance, additive criterion distances, and
+closeness coefficients, then returns source values and all intermediate values
+alongside a deterministic rank. The API requires an explicit acknowledgement
+that the output is provisional.
+
+This endpoint is an execution and transparency aid, not a validated research
+result. It does not combine the four runs, infer missing peak windows, use LOS
+as a scored criterion, select default weights, or establish intervention
+efficacy. Instructor approval and the unresolved Table 8 clock-time evidence
+remain gates before any ranking is reported as a research conclusion.
+
 ## Reference
 
 Chen, C.-T. (2000). “Extensions of the TOPSIS for group decision-making under fuzzy environment.” *Fuzzy Sets and Systems*, 114(1), 1–9. https://doi.org/10.1016/S0165-0114(97)00377-1

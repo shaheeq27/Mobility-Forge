@@ -2,11 +2,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Install the locked frontend dependencies, then start the development server:
+
+```bash
+npm ci
+```
 
 ```bash
 npm run dev
-# or
+```
+
+Alternatively, use the package-manager command for your environment:
+
+```bash
 yarn dev
 # or
 pnpm dev
@@ -19,6 +27,18 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## MobilityForge API connection
+
+Start the read-only backend API on `http://localhost:8000` before opening the
+Intersections page. The page reads `NEXT_PUBLIC_MOBILITY_API_URL`; if it is not
+set, it defaults to `http://localhost:8000`.
+
+For another local API origin, create `frontend/.env.local` with:
+
+```bash
+NEXT_PUBLIC_MOBILITY_API_URL=http://localhost:8000
+```
 
 ## Learn More
 

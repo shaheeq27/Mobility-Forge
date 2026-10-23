@@ -17,6 +17,8 @@ from mobility_engine.fuzzy_topsis import (
 )
 from mobility_engine.scoring import min_max_normalize, weighted_sum
 from mobility_engine.validation import validate_observations
+from mobility_engine.decision_service import run_fuzzy_topsis
+from mobility_engine.models import SectionObservation
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +26,53 @@ CSV = ROOT / "data" / "extracted" / "bbmp_tumkur_midblock_vc_los_table8.csv"
 
 
 class EngineTests(unittest.TestCase):
+    def _synthetic_slice(self, period=Period.MORNING, direction=Direction.YESHWANTHPUR):
+        return [
+            SectionObservation(46, index, name, "synthetic", period, direction, Decimal(str(index)), Decimal(str(index) + ".1"), "C")
+            for index, name in enumerate((
+                "Yeshwanthpur TTMC", "Yeshwanthpur Skywalk",
+                "Tumkur Road (Between Gorguntepalya-SRS)",
+                "Tumkur Road (Between SRS-Jalahalli Junction)",
+                "Tumkur Road (Between Jalahalli junction-Hesarghatta Junction)",
+                "Tumkur Road (Between Hesarghatta Junction-Nagasandra)",
+            ), start=1)
+        ]
+
+    def test_decision_service_runs_one_period_and_direction_without_aggregation(self):
+        result = run_fuzzy_topsis(self._synthetic_slice(), Period.MORNING, Direction.YESHWANTHPUR, {"pcu": Decimal("0.5"), "vc": Decimal("0.5")})
+        self.assertEqual(len(result.alternatives), 6)
+        self.assertEqual({item.observation.period for item in result.alternatives}, {Period.MORNING})
+        self.assertEqual({item.observation.direction for item in result.alternatives}, {Direction.YESHWANTHPUR})
+        self.assertEqual([item.rank for item in result.alternatives], [6, 5, 4, 3, 2, 1])
+        for item in result.alternatives:
+            self.assertEqual(item.closeness_coefficient, item.distance_negative / (item.distance_positive + item.distance_negative))
+            self.assertEqual(item.normalized["pcu"].upper, Decimal("1") if item.observation.section_no == 6 else Decimal(item.observation.section_no) / Decimal("6"))
+
+    def test_decision_service_supports_each_separate_period_direction_run(self):
+        for period in Period:
+            for direction in Direction:
+                with self.subTest(period=period, direction=direction):
+                    result = run_fuzzy_topsis(self._synthetic_slice(period, direction), period, direction, {"pcu": Decimal("0.5"), "vc": Decimal("0.5")})
+                    self.assertEqual(len(result.alternatives), 6)
+
+    def test_decision_service_rejects_duplicate_or_mixed_slice(self):
+        values = self._synthetic_slice()
+        with self.assertRaisesRegex(ValueError, "duplicate alternative"):
+            run_fuzzy_topsis(values + [values[0]], Period.MORNING, Direction.YESHWANTHPUR, {"pcu": Decimal("0.5"), "vc": Decimal("0.5")})
+        mixed = list(values)
+        mixed[0] = replace(mixed[0], direction=Direction.NAGASANDRA)
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            run_fuzzy_topsis(mixed, Period.MORNING, Direction.YESHWANTHPUR, {"pcu": Decimal("0.5"), "vc": Decimal("0.5")})
+
+    def test_decision_service_rejects_invalid_observation_values(self):
+        values = self._synthetic_slice()
+        values[0] = replace(values[0], volume_pcu=Decimal("0"))
+        with self.assertRaisesRegex(ValueError, "invalid PCU"):
+            run_fuzzy_topsis(values, Period.MORNING, Direction.YESHWANTHPUR, {"pcu": Decimal("0.5"), "vc": Decimal("0.5")})
+        values = self._synthetic_slice()
+        values[0] = replace(values[0], vc_ratio=Decimal("-0.1"))
+        with self.assertRaisesRegex(ValueError, "invalid V/C"):
+            run_fuzzy_topsis(values, Period.MORNING, Direction.YESHWANTHPUR, {"pcu": Decimal("0.5"), "vc": Decimal("0.5")})
     def test_source_csv_loads_without_aggregation(self):
         observations = load_observations(CSV)
         self.assertEqual(len(observations), 24)
