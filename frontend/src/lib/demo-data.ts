@@ -1,3 +1,13 @@
-/** Presentation-only values. These are not traffic observations or research outputs. */
-export const overviewMetrics=[['Planned decision inputs','—','Awaiting verified data','var(--cyan)'],['Intersections in research set','—','Dataset not established','var(--lime)'],['Decision method','Pending','Instructor confirmation required','var(--cyan)'],['Research status','Foundation','Phase 1 interface only','var(--lime)']]as const;
-export const previewRows=[['Illustrative location A','Not established','No source connected'],['Illustrative location B','Not established','No source connected'],['Illustrative location C','Not established','No source connected']]as const;
+/** Interface copy only. It makes no intervention-effectiveness claim. */
+export const overviewMetrics = [
+  ["Source observations", "24", "Preserved by period and direction", "var(--cyan)"],
+  ["Road-section alternatives", "6", "Tumkur Road scope remains provisional", "var(--lime)"],
+  ["Separate decision runs", "4", "Morning/evening × both directions", "var(--cyan)"],
+  ["Research status", "Provisional", "Evidence and methodology remain under review", "var(--lime)"],
+] as const;
+
+export const overviewRows = [
+  ["Source record", "BBMP Table 8 extract", "Available in the Intersections workspace"],
+  ["Decision model", "Fuzzy TOPSIS execution", "Requires explicit weights and acknowledgement"],
+  ["Interpretation", "LOS is contextual", "Not silently added as a weighted criterion"],
+] as const;
